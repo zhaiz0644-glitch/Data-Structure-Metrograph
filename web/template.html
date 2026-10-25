@@ -1,0 +1,1096 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>城市交通路径导航系统</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+SC:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #eef1f7;
+    --card: #ffffff;
+    --card-2: #f7f9fc;
+    --border: #e4e9f2;
+    --text: #1e293b;
+    --text-2: #64748b;
+    --text-3: #94a3b8;
+    --primary: #4f6bfe;
+    --primary-2: #7c5cff;
+    --primary-soft: #eef1ff;
+    --danger: #ef4444;
+    --ok: #16a34a;
+    --path: #ff2d55;
+    --radius: 16px;
+    --shadow: 0 10px 30px rgba(30,41,59,.08), 0 2px 6px rgba(30,41,59,.04);
+    --shadow-sm: 0 2px 8px rgba(30,41,59,.06);
+    --font: "Inter","PingFang SC","Hiragino Sans GB","Microsoft YaHei","Noto Sans SC","Helvetica Neue",Arial,sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; }
+  body {
+    font-family: var(--font);
+    background: linear-gradient(135deg, #eef1f7 0%, #f8fafc 100%);
+    color: var(--text);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  /* ---------- 顶部栏 ---------- */
+  .topbar {
+    display: flex; align-items: center; justify-content: space-between; gap: 16px;
+    padding: 12px 22px; background: var(--card);
+    border-bottom: 1px solid var(--border); box-shadow: var(--shadow-sm);
+    z-index: 10; flex-shrink: 0; flex-wrap: wrap;
+  }
+  .brand { display: flex; align-items: center; gap: 14px; }
+  .logo {
+    width: 46px; height: 46px; border-radius: 13px;
+    background: linear-gradient(135deg, var(--primary), var(--primary-2));
+    display: grid; place-items: center; font-size: 24px;
+    box-shadow: 0 6px 16px rgba(79,107,254,.35); color: #fff;
+  }
+  .brand h1 { margin: 0; font-size: 19px; font-weight: 700; letter-spacing: .5px; }
+  .brand p { margin: 2px 0 0; font-size: 12px; color: var(--text-2); font-weight: 500; letter-spacing: .3px; }
+  .top-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .top-actions label { font-size: 12px; font-weight: 600; color: var(--text-2); }
+  .top-actions select {
+    padding: 8px 12px; border: 1.5px solid var(--border); border-radius: 10px;
+    font-family: var(--font); font-size: 13px; color: var(--text); background: #fff; cursor: pointer;
+  }
+  .top-actions select:focus { outline: none; border-color: var(--primary); }
+
+  /* ---------- 主布局 ---------- */
+  .layout { flex: 1; display: grid; grid-template-columns: 300px 1fr 330px; min-height: 0; }
+
+  /* ---------- 卡片 ---------- */
+  .card {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: var(--radius); box-shadow: var(--shadow-sm); padding: 16px;
+  }
+  .card-title {
+    font-size: 12px; font-weight: 700; color: var(--text-2);
+    text-transform: uppercase; letter-spacing: 1px; margin: 0 0 12px;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .card-title .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--primary); display: inline-block; }
+
+  /* ---------- 左侧栏 ---------- */
+  .sidebar { padding: 18px; overflow-y: auto; display: flex; flex-direction: column; gap: 14px; }
+  .segmented { display: flex; background: var(--card-2); border: 1px solid var(--border); border-radius: 12px; padding: 4px; gap: 4px; }
+  .segmented button {
+    flex: 1; border: none; background: transparent; padding: 9px 4px; border-radius: 9px;
+    cursor: pointer; font-family: var(--font); font-size: 13px; font-weight: 600; color: var(--text-2);
+    transition: all .18s ease; white-space: nowrap;
+  }
+  .segmented button.active { background: #fff; color: var(--primary); box-shadow: var(--shadow-sm); }
+  .segmented button:hover:not(.active) { color: var(--text); }
+  .alg-desc { margin-top: 10px; font-size: 12px; color: var(--text-2); line-height: 1.5; }
+
+  .field { margin-bottom: 12px; }
+  .field:last-child { margin-bottom: 0; }
+  .field label { display: block; font-size: 12px; font-weight: 600; color: var(--text-2); margin-bottom: 6px; }
+  .field input, .field select {
+    width: 100%; padding: 10px 12px; border: 1.5px solid var(--border); border-radius: 10px;
+    font-family: var(--font); font-size: 14px; color: var(--text); background: #fff;
+    transition: border-color .15s, box-shadow .15s;
+  }
+  .field input:focus, .field select:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(79,107,254,.12); }
+  .field .hint { font-size: 11px; color: var(--text-3); margin-top: 5px; }
+
+  .btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+    padding: 11px 16px; border-radius: 11px; border: none; cursor: pointer;
+    font-family: var(--font); font-size: 14px; font-weight: 600;
+    transition: transform .15s ease, box-shadow .15s ease, background .15s ease, border-color .15s, color .15s;
+  }
+  .btn:active { transform: translateY(0) scale(.99); }
+  .btn-primary {
+    width: 100%; background: linear-gradient(135deg, var(--primary), var(--primary-2));
+    color: #fff; box-shadow: 0 6px 16px rgba(79,107,254,.32);
+  }
+  .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 10px 22px rgba(79,107,254,.4); }
+  .btn-ghost { background: #fff; border: 1.5px solid var(--border); color: var(--text); }
+  .btn-ghost:hover { border-color: var(--primary); color: var(--primary); }
+  .btn-block { width: 100%; }
+  .btn-toolbar { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+  .btn-toolbar .btn { padding: 9px 4px; font-size: 12.5px; }
+  .btn svg { flex-shrink: 0; }
+
+  .switch-row { display: flex; align-items: center; justify-content: space-between; padding: 8px 0; }
+  .switch-row .lbl { font-size: 13px; font-weight: 600; color: var(--text); }
+  .switch { position: relative; width: 44px; height: 24px; flex-shrink: 0; }
+  .switch input { display: none; }
+  .switch .slider {
+    position: absolute; inset: 0; border-radius: 999px; background: #d4dbe7; cursor: pointer; transition: background .2s;
+  }
+  .switch .slider::before {
+    content: ""; position: absolute; width: 18px; height: 18px; left: 3px; top: 3px;
+    background: #fff; border-radius: 50%; transition: transform .2s; box-shadow: 0 1px 3px rgba(0,0,0,.25);
+  }
+  .switch input:checked + .slider { background: var(--primary); }
+  .switch input:checked + .slider::before { transform: translateX(20px); }
+
+  /* ---------- 地图区 ---------- */
+  .map-area {
+    position: relative; min-width: 0;
+    background-color: #f4f6fb;
+    background-image: radial-gradient(circle, #dde4ef 1px, transparent 1px);
+    background-size: 24px 24px;
+  }
+  #map { position: absolute; inset: 0; width: 100%; height: 100%; display: block; cursor: grab; touch-action: none; }
+  #map.dragging { cursor: grabbing; }
+  .map-hint {
+    position: absolute; bottom: 14px; left: 50%; transform: translateX(-50%);
+    background: rgba(30,41,59,.82); color: #fff; font-size: 12px; padding: 6px 14px; border-radius: 999px;
+    pointer-events: none; opacity: .85; backdrop-filter: blur(6px); white-space: nowrap;
+  }
+
+  /* ---------- SVG 元素 ---------- */
+  .station { cursor: pointer; transition: transform .16s ease; transform-box: fill-box; transform-origin: center; }
+  .station:hover { transform: scale(1.6); }
+  .station-label { font-size: 11px; fill: #334155; pointer-events: none; font-weight: 500; }
+
+  /* ---------- 右侧结果栏 ---------- */
+  .results { padding: 18px; overflow-y: auto; display: flex; flex-direction: column; gap: 14px; }
+  .result-title { font-size: 14px; font-weight: 700; margin: 0; }
+  .empty { color: var(--text-3); font-size: 12.5px; line-height: 1.7; text-align: center; padding: 22px 8px; }
+  .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .stat { background: var(--card-2); border: 1px solid var(--border); border-radius: 12px; padding: 10px 12px; }
+  .stat .k { font-size: 11px; color: var(--text-3); font-weight: 600; }
+  .stat .v { font-size: 16px; font-weight: 700; margin-top: 2px; word-break: break-all; }
+  .path-list { list-style: none; margin: 0; padding: 0; }
+  .path-list li { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 10px; font-size: 13px; }
+  .path-list li:nth-child(odd) { background: var(--card-2); }
+  .path-list .idx {
+    width: 22px; height: 22px; border-radius: 50%; background: var(--primary); color: #fff;
+    font-size: 11px; display: grid; place-items: center; flex-shrink: 0; font-weight: 600;
+  }
+  .path-list li.start .idx { background: var(--ok); }
+  .path-list li.end .idx { background: var(--danger); }
+  .path-list li.start { font-weight: 600; }
+  .path-list li.end { font-weight: 600; }
+
+  /* ---------- 状态栏 ---------- */
+  .statusbar {
+    padding: 8px 22px; font-size: 12px; color: var(--text-2); background: var(--card);
+    border-top: 1px solid var(--border); flex-shrink: 0; display: flex; align-items: center; gap: 8px; white-space: nowrap; overflow: hidden;
+  }
+  .statusbar .sep { color: var(--text-3); }
+
+  /* ---------- 悬浮提示 ---------- */
+  .tooltip {
+    position: fixed; z-index: 50; pointer-events: none;
+    background: rgba(30,41,59,.94); color: #fff; padding: 8px 12px; border-radius: 10px;
+    font-size: 12px; line-height: 1.5; box-shadow: 0 8px 20px rgba(0,0,0,.25);
+    opacity: 0; transition: opacity .12s ease; max-width: 260px;
+  }
+  .tooltip.show { opacity: 1; }
+  .tooltip .tt-name { font-weight: 700; font-size: 13px; }
+  .tooltip .tt-lines { color: #cbd5e1; margin-top: 2px; }
+
+  /* ---------- 弹窗 ---------- */
+  .modal-backdrop {
+    position: fixed; inset: 0; background: rgba(15,23,42,.45); z-index: 100;
+    display: none; align-items: center; justify-content: center; backdrop-filter: blur(3px);
+  }
+  .modal-backdrop.show { display: flex; }
+  .modal {
+    background: #fff; border-radius: 18px; width: 380px; max-width: 92vw; padding: 22px;
+    box-shadow: 0 24px 60px rgba(0,0,0,.3); animation: pop .18s ease;
+  }
+  @keyframes pop { from { transform: translateY(8px) scale(.98); opacity: 0; } to { transform: none; opacity: 1; } }
+  .modal h3 { margin: 0 0 16px; font-size: 17px; }
+  .modal .actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; }
+  .modal .actions .btn { min-width: 88px; padding: 10px 16px; }
+
+  /* ---------- 轻提示 ---------- */
+  .toast {
+    position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(20px);
+    background: var(--text); color: #fff; padding: 11px 18px; border-radius: 12px; font-size: 13px;
+    opacity: 0; transition: all .25s ease; z-index: 200; box-shadow: 0 10px 26px rgba(0,0,0,.25); max-width: 80vw;
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  .toast.error { background: var(--danger); }
+  .toast.ok { background: var(--ok); }
+
+  /* ---------- 窄屏适配 ---------- */
+  @media (max-width: 1080px) {
+    .layout { grid-template-columns: 270px 1fr; }
+    .results { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand">
+    <div class="logo">🚇</div>
+    <div>
+      <h1>城市交通路径导航系统</h1>
+      <p>图论算法 · Dijkstra / BFS / A* · 交互式路径规划</p>
+    </div>
+  </div>
+  <div class="top-actions">
+    <label for="dataset-select">数据集</label>
+    <select id="dataset-select">
+      <option value="zhengzhou">郑州地铁（233 站）</option>
+      <option value="beijing">北京地铁（411 站）</option>
+      <option value="sample">示例网络（13 站）</option>
+    </select>
+    <button class="btn btn-ghost" id="btn-load" title="加载本地 .json / .txt 数据文件">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+      加载文件
+    </button>
+    <button class="btn btn-ghost" id="btn-save" title="导出当前数据为 JSON">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 8 12 3 17 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+      保存
+    </button>
+  </div>
+</header>
+
+<div class="layout">
+  <aside class="sidebar">
+    <div class="card">
+      <div class="card-title"><span class="dot"></span>选择算法</div>
+      <div class="segmented">
+        <button data-alg="dijkstra" class="active">Dijkstra</button>
+        <button data-alg="bfs">BFS</button>
+        <button data-alg="astar">A*</button>
+      </div>
+      <div class="alg-desc" id="alg-desc">最快路径（按距离权重）</div>
+    </div>
+
+    <div class="card">
+      <div class="card-title"><span class="dot"></span>起终点</div>
+      <div class="field">
+        <label for="start-input">起点站</label>
+        <input id="start-input" list="station-list" placeholder="点击地图或输入站名" autocomplete="off">
+      </div>
+      <div class="field">
+        <label for="end-input">终点站</label>
+        <input id="end-input" list="station-list" placeholder="点击地图或输入站名" autocomplete="off">
+      </div>
+      <div class="field" style="margin-top:14px">
+        <button class="btn btn-primary" id="btn-search">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          搜索路径
+        </button>
+      </div>
+      <div class="hint" style="font-size:11px;color:var(--text-3)">提示：直接点击地图选点更快。</div>
+    </div>
+
+    <div class="card">
+      <div class="card-title"><span class="dot"></span>显示选项</div>
+      <div class="switch-row">
+        <span class="lbl">动画演示</span>
+        <label class="switch"><input type="checkbox" id="switch-animate"><span class="slider"></span></label>
+      </div>
+      <div class="switch-row">
+        <span class="lbl">显示站名</span>
+        <label class="switch"><input type="checkbox" id="switch-names" checked><span class="slider"></span></label>
+      </div>
+      <div style="margin-top:12px">
+        <button class="btn btn-ghost btn-block" id="btn-reset">重置视图</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title"><span class="dot"></span>数据编辑</div>
+      <div class="btn-toolbar">
+        <button class="btn btn-ghost" id="btn-add-station">添加站点</button>
+        <button class="btn btn-ghost" id="btn-remove-station">删除站点</button>
+        <button class="btn btn-ghost" id="btn-add-edge">添加区间</button>
+      </div>
+    </div>
+  </aside>
+
+  <main class="map-area" id="map-area">
+    <svg id="map" xmlns="http://www.w3.org/2000/svg"></svg>
+    <div class="map-hint">滚轮缩放 · 拖拽平移 · 点击选点</div>
+  </main>
+
+  <aside class="results">
+    <div class="card" style="flex:1; display:flex; flex-direction:column; min-height:0;">
+      <h3 class="result-title" id="result-title">路径站点清单</h3>
+      <div id="result-stats" style="margin-top:12px"></div>
+      <div id="result-list" style="margin-top:12px; overflow-y:auto; flex:1"></div>
+    </div>
+  </aside>
+</div>
+
+<footer class="statusbar" id="statusbar"></footer>
+
+<div class="tooltip" id="tooltip"></div>
+<div class="toast" id="toast"></div>
+
+<div class="modal-backdrop" id="modal">
+  <div class="modal">
+    <h3 id="modal-title"></h3>
+    <div id="modal-body"></div>
+    <div class="actions">
+      <button class="btn btn-ghost" id="modal-cancel">取消</button>
+      <button class="btn btn-primary" id="modal-confirm" style="width:auto">确定</button>
+    </div>
+  </div>
+</div>
+
+<input type="file" id="file-input" accept=".json,.txt" hidden>
+<datalist id="station-list"></datalist>
+
+<script>
+/* =========================================================
+   城市交通路径导航系统 —— 网页版
+   算法 / 数据结构与桌面版 (graph.py / solver.py) 完全一致：
+   Dijkstra（最快路径）、BFS（最少换乘）、A*（启发式搜索）
+   ========================================================= */
+
+/* ---------- 状态（纯数据） ---------- */
+let graph = null;           // { stations, adj, stationLines, lineColors, name }
+let lineColors = {};
+let nameIndex = {};         // 站名 -> 站点 id
+let currentResult = null;
+let view = { cx: 0, cy: 0, scale: 5 };
+let screenPos = {};         // id -> {x, y}（屏幕像素坐标缓存）
+let algorithm = 'dijkstra';
+let animate = false;
+let showNames = true;
+let animTimers = [];
+
+/* ---------- DOM 引用（init 中赋值） ---------- */
+let svg, mapArea, tooltip, toastEl, fileInput, startInput, endInput, modalConfirmHandler;
+
+/* ---------- 内置数据集（由 build.py 注入） ---------- */
+const DATASETS = __DATASETS_JSON__;
+
+/* ---------- 兜底线路配色（与 scripts/import_metro.py 一致） ---------- */
+const PALETTE = [
+  "#c23a30", "#0072bc", "#f5a623", "#009944", "#8e44ad",
+  "#e74c3c", "#16a085", "#2980b9", "#d35400", "#2c3e50",
+  "#27ae60", "#f39c12", "#1abc9c", "#c0392b", "#34495e",
+  "#7f8c8d", "#e67e22", "#9b59b6", "#3498db", "#2ecc71",
+  "#f1c40f", "#95a5a6", "#e67e22", "#2980b9", "#c0392b"
+];
+
+/* =========================================================
+   图与算法（与 solver.py 一一对应）
+   ========================================================= */
+
+function buildGraph(data) {
+  const stations = {};
+  data.stations.forEach(s => { stations[s.id] = { id: s.id, name: s.name, x: s.x, y: s.y }; });
+  const adj = {};
+  data.stations.forEach(s => { adj[s.id] = []; });
+  data.edges.forEach(e => {
+    if (!adj[e.from] || !adj[e.to]) return;
+    adj[e.from].push([e.to, e.weight, e.line || '']);
+    adj[e.to].push([e.from, e.weight, e.line || '']);
+  });
+  const stationLines = {};
+  for (const id in stations) stationLines[id] = new Set();
+  data.edges.forEach(e => {
+    if (stationLines[e.from]) stationLines[e.from].add(e.line || '');
+    if (stationLines[e.to]) stationLines[e.to].add(e.line || '');
+  });
+  const lineColors = {};
+  if (data.lines) for (const k in data.lines) lineColors[k] = data.lines[k];
+  let pi = 0;
+  for (const id in stationLines) {
+    for (const ln of stationLines[id]) {
+      if (ln && !(ln in lineColors)) lineColors[ln] = PALETTE[pi++ % PALETTE.length];
+    }
+  }
+  return { stations, adj, stationLines, lineColors, name: data.name || '城市地铁网络' };
+}
+
+class MinHeap {
+  constructor() { this.a = []; }
+  get size() { return this.a.length; }
+  push(item) {
+    const a = this.a; a.push(item);
+    let i = a.length - 1;
+    while (i > 0) {
+      const p = (i - 1) >> 1;
+      if (a[p][0] <= a[i][0]) break;
+      [a[p], a[i]] = [a[i], a[p]]; i = p;
+    }
+  }
+  pop() {
+    const a = this.a; const top = a[0]; const last = a.pop();
+    if (a.length) {
+      a[0] = last;
+      let i = 0;
+      while (true) {
+        const l = 2 * i + 1, r = 2 * i + 2; let m = i;
+        if (l < a.length && a[l][0] < a[m][0]) m = l;
+        if (r < a.length && a[r][0] < a[m][0]) m = r;
+        if (m === i) break;
+        [a[m], a[i]] = [a[i], a[m]]; i = m;
+      }
+    }
+    return top;
+  }
+}
+
+function euclidean(g, a, b) {
+  const sa = g.stations[a], sb = g.stations[b];
+  return Math.hypot(sa.x - sb.x, sa.y - sb.y);
+}
+
+function reconstruct(prev, target) {
+  const path = [];
+  let cur = target;
+  while (cur !== null && cur !== undefined) { path.push(cur); cur = prev[cur]; }
+  path.reverse();
+  return path;
+}
+
+function dijkstra(g, start, target) {
+  const dist = {}, prev = {};
+  dist[start] = 0; prev[start] = null;
+  const visitOrder = [], visited = new Set();
+  const pq = new MinHeap(); pq.push([0, start]);
+  while (pq.size) {
+    const [d, u] = pq.pop();
+    if (visited.has(u)) continue;
+    visited.add(u); visitOrder.push(u);
+    if (u === target) return { ok: true, path: reconstruct(prev, target), totalWeight: d, visitedCount: visitOrder.length, visitOrder, message: '' };
+    for (const [v, w] of g.adj[u]) {
+      const nd = d + w;
+      if (nd < (dist[v] ?? Infinity)) {
+        dist[v] = nd; prev[v] = u; pq.push([nd, v]);
+      }
+    }
+  }
+  return { ok: false, path: [], totalWeight: 0, visitedCount: visitOrder.length, visitOrder, message: '两站不连通，无法到达' };
+}
+
+function bfs(g, start, target) {
+  const prev = {}; prev[start] = null;
+  const visited = new Set([start]), visitOrder = [];
+  const q = [start];
+  while (q.length) {
+    const u = q.shift();
+    visitOrder.push(u);
+    if (u === target) {
+      const path = reconstruct(prev, target);
+      let totalWeight = 0;
+      for (let i = 0; i < path.length - 1; i++) {
+        const e = g.adj[path[i]].find(x => x[0] === path[i + 1]);
+        totalWeight += e ? e[1] : 0;
+      }
+      return { ok: true, path, totalWeight, visitedCount: visitOrder.length, visitOrder, message: '' };
+    }
+    for (const [v] of g.adj[u]) {
+      if (!visited.has(v)) { visited.add(v); prev[v] = u; q.push(v); }
+    }
+  }
+  return { ok: false, path: [], totalWeight: 0, visitedCount: visitOrder.length, visitOrder, message: '两站不连通，无法到达' };
+}
+
+function astar(g, start, target) {
+  const dist = {}, prev = {};
+  dist[start] = 0; prev[start] = null;
+  const visitOrder = [], visited = new Set();
+  const pq = new MinHeap(); pq.push([euclidean(g, start, target), start, 0]);
+  while (pq.size) {
+    const [f, u, gcost] = pq.pop();
+    if (visited.has(u)) continue;
+    visited.add(u); visitOrder.push(u);
+    if (u === target) return { ok: true, path: reconstruct(prev, target), totalWeight: gcost, visitedCount: visitOrder.length, visitOrder, message: '' };
+    for (const [v, w] of g.adj[u]) {
+      const nd = gcost + w;
+      if (nd < (dist[v] ?? Infinity)) {
+        dist[v] = nd; prev[v] = u;
+        pq.push([nd + euclidean(g, v, target), v, nd]);
+      }
+    }
+  }
+  return { ok: false, path: [], totalWeight: 0, visitedCount: visitOrder.length, visitOrder, message: '两站不连通，无法到达' };
+}
+
+const ALGORITHMS = {
+  dijkstra: { fn: dijkstra, short: 'Dijkstra', desc: '最快路径（按距离权重）' },
+  bfs: { fn: bfs, short: 'BFS', desc: '最少换乘（最少站数）' },
+  astar: { fn: astar, short: 'A*', desc: '启发式搜索（欧氏距离）' }
+};
+
+/* =========================================================
+   纯工具函数
+   ========================================================= */
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
+function countEdges(g) {
+  let c = 0; const seen = new Set();
+  for (const sid in g.adj) for (const [nid] of g.adj[sid]) {
+    const k = sid < nid ? sid + '|' + nid : nid + '|' + sid;
+    if (!seen.has(k)) { seen.add(k); c++; }
+  }
+  return c;
+}
+
+function stationR() { const n = Object.keys(graph.stations).length; return n > 250 ? 5 : n > 60 ? 6 : 8; }
+function edgeW() { const n = Object.keys(graph.stations).length; return n > 250 ? 3 : n > 60 ? 4 : 5; }
+
+function rebuildIndex() {
+  nameIndex = {};
+  for (const id in graph.stations) nameIndex[graph.stations[id].name] = id;
+}
+
+function genStationId() {
+  let n = 1;
+  while (true) {
+    const id = 'U' + String(n).padStart(3, '0');
+    if (!graph.stations[id]) return id;
+    n++;
+  }
+}
+
+function parseTXT(text) {
+  const stations = [], edges = [];
+  for (let line of text.split(/\r?\n/)) {
+    line = line.trim();
+    if (!line || line.startsWith('#')) continue;
+    const parts = line.split(',').map(s => s.trim());
+    if (!parts.length) continue;
+    const tag = parts[0].toLowerCase();
+    if (tag === 'station' && parts.length >= 5) {
+      stations.push({ id: parts[1], name: parts[2], x: parseFloat(parts[3]), y: parseFloat(parts[4]) });
+    } else if (tag === 'edge' && parts.length >= 4) {
+      edges.push({ from: parts[1], to: parts[2], weight: parseFloat(parts[3]), line: parts[4] || '' });
+    }
+  }
+  return { name: '本地数据', lines: {}, stations, edges };
+}
+
+function serializeGraph(g) {
+  const stations = Object.keys(g.stations).map(id => {
+    const s = g.stations[id]; return { id, name: s.name, x: s.x, y: s.y };
+  });
+  const seen = new Set(), edges = [];
+  for (const sid in g.adj) for (const [nid, w, line] of g.adj[sid]) {
+    const k = sid < nid ? sid + '|' + nid : nid + '|' + sid;
+    if (seen.has(k)) continue;
+    seen.add(k);
+    edges.push({ from: sid, to: nid, weight: w, line });
+  }
+  return { name: g.name, stations, edges, lines: g.lineColors };
+}
+
+/* =========================================================
+   渲染（SVG）
+   ========================================================= */
+
+function svgSize() { return { w: mapArea.clientWidth, h: mapArea.clientHeight }; }
+
+function toScreen(id) {
+  const s = graph.stations[id];
+  const { w, h } = svgSize();
+  return { x: w / 2 + (s.x - view.cx) * view.scale, y: h / 2 + (s.y - view.cy) * view.scale };
+}
+
+function fitView() {
+  const ids = Object.keys(graph.stations);
+  if (!ids.length) return;
+  const { w, h } = svgSize();
+  if (w < 20 || h < 20) return;
+  let minx = Infinity, maxx = -Infinity, miny = Infinity, maxy = -Infinity;
+  for (const id of ids) {
+    const s = graph.stations[id];
+    if (s.x < minx) minx = s.x; if (s.x > maxx) maxx = s.x;
+    if (s.y < miny) miny = s.y; if (s.y > maxy) maxy = s.y;
+  }
+  if (maxx === minx && maxy === miny) { view.scale = 10; }
+  else {
+    const margin = 50;
+    const sx = (w - 2 * margin) / (maxx - minx);
+    const sy = (h - 2 * margin) / (maxy - miny);
+    view.scale = Math.max(0.4, Math.min(sx, sy));
+  }
+  view.cx = (minx + maxx) / 2;
+  view.cy = (miny + maxy) / 2;
+}
+
+function stationStroke(sid) {
+  const ls = graph.stationLines[sid];
+  if (!ls || ls.size === 0) return '#94a3b8';
+  if (ls.size >= 2) return '#334155';
+  const line = [...ls][0];
+  return lineColors[line] || '#64748b';
+}
+
+function pathSegmentsHTML(path) {
+  if (path.length < 2) return '';
+  const ew = edgeW();
+  let glow = '', top = '';
+  for (let i = 0; i < path.length - 1; i++) {
+    const a = screenPos[path[i]], b = screenPos[path[i + 1]];
+    if (!a || !b) continue;
+    glow += `<line x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}" stroke="${'#ff2d55'}" stroke-width="${ew * 2.4}" stroke-linecap="round" opacity="0.22"/>`;
+    top += `<line x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}" stroke="${'#ff2d55'}" stroke-width="${ew * 1.05}" stroke-linecap="round"/>`;
+  }
+  return glow + top;
+}
+
+function markerHTML(id, tag, color) {
+  const p = screenPos[id];
+  const r = stationR();
+  return `<circle cx="${p.x}" cy="${p.y}" r="${r + 4}" fill="none" stroke="${color}" stroke-width="3"/>` +
+         `<text x="${p.x}" y="${p.y - r - 12}" text-anchor="middle" font-size="12" font-weight="700" fill="${color}" stroke="#ffffff" stroke-width="3" paint-order="stroke">${tag}</text>`;
+}
+
+function render() {
+  if (!graph) return;
+  const { w, h } = svgSize();
+  if (w < 10 || h < 10) return;
+  screenPos = {};
+  const r = stationR(), ew = edgeW();
+  const casing = [], colored = [], stationsArr = [], labels = [], markers = [];
+
+  for (const sid in graph.stations) {
+    const p = toScreen(sid);
+    screenPos[sid] = p;
+    const stroke = stationStroke(sid);
+    stationsArr.push(`<circle class="station" data-id="${sid}" cx="${p.x}" cy="${p.y}" r="${r}" fill="#ffffff" stroke="${stroke}" stroke-width="2.4"/>`);
+    if (showNames) {
+      labels.push(`<text class="station-label" x="${p.x}" y="${p.y - r - 4}" text-anchor="middle" stroke="#ffffff" stroke-width="3" paint-order="stroke">${escapeHtml(graph.stations[sid].name)}</text>`);
+    }
+  }
+
+  const seen = new Set();
+  for (const sid in graph.adj) {
+    for (const [nid, wgt, line] of graph.adj[sid]) {
+      const key = sid < nid ? sid + '|' + nid : nid + '|' + sid;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      const a = screenPos[sid], b = screenPos[nid];
+      if (!a || !b) continue;
+      const color = lineColors[line] || '#9aa7b8';
+      casing.push(`<line x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}" stroke="#ffffff" stroke-width="${ew + 2.5}" stroke-linecap="round"/>`);
+      colored.push(`<line x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}" stroke="${color}" stroke-width="${ew}" stroke-linecap="round" opacity="0.95"/>`);
+    }
+  }
+
+  let pathHTML = '';
+  if (currentResult && currentResult.ok && !animating) pathHTML = pathSegmentsHTML(currentResult.path);
+
+  const startId = nameIndex[startInput.value.trim()] || null;
+  const endId = nameIndex[endInput.value.trim()] || null;
+  if (startId && screenPos[startId]) markers.push(markerHTML(startId, '起', '#16a34a'));
+  if (endId && screenPos[endId]) markers.push(markerHTML(endId, '终', '#ef4444'));
+
+  svg.innerHTML = casing.join('') + colored.join('') + pathHTML + stationsArr.join('') + labels.join('') + markers.join('');
+}
+
+/* =========================================================
+   结果面板
+   ========================================================= */
+
+function resetResultPanel() {
+  document.getElementById('result-title').textContent = '路径站点清单';
+  document.getElementById('result-stats').innerHTML = '<div class="empty">在地图上点击站点选择起终点，<br>或从左侧输入站名后点击「搜索路径」。</div>';
+  document.getElementById('result-list').innerHTML = '';
+}
+
+function renderResult(result) {
+  const titleEl = document.getElementById('result-title');
+  const statsEl = document.getElementById('result-stats');
+  const listEl = document.getElementById('result-list');
+  if (!result.ok) {
+    titleEl.textContent = '搜索失败';
+    statsEl.innerHTML = `<div class="empty">${escapeHtml(result.message || '两站不连通，无法到达')}</div>`;
+    listEl.innerHTML = '';
+    return;
+  }
+  titleEl.textContent = '路径站点清单';
+  const alg = ALGORITHMS[algorithm];
+  statsEl.innerHTML = `
+    <div class="stats-grid">
+      <div class="stat"><div class="k">算法</div><div class="v">${alg.short}</div></div>
+      <div class="stat"><div class="k">耗时</div><div class="v">${result.ms.toFixed(2)} ms</div></div>
+      <div class="stat"><div class="k">路径权重</div><div class="v">${result.totalWeight.toFixed(2)} km</div></div>
+      <div class="stat"><div class="k">经过站数</div><div class="v">${result.path.length} 站</div></div>
+      <div class="stat"><div class="k">扩展节点</div><div class="v">${result.visitedCount}</div></div>
+      <div class="stat"><div class="k">状态</div><div class="v" style="color:#16a34a">成功</div></div>
+    </div>`;
+  listEl.innerHTML = result.path.map((sid, i) => {
+    const s = graph.stations[sid];
+    const cls = i === 0 ? 'start' : (i === result.path.length - 1 ? 'end' : '');
+    return `<li class="${cls}"><span class="idx">${i + 1}</span><span>${escapeHtml(s.name)}</span></li>`;
+  }).join('');
+}
+
+/* =========================================================
+   动画
+   ========================================================= */
+
+function clearAnim() { animTimers.forEach(t => clearTimeout(t)); animTimers = []; animating = false; }
+
+function animateSearch(result) {
+  clearAnim();
+  animating = true;
+  render();
+  const order = result.visitOrder;
+  const r = stationR();
+  const batch = Math.max(1, Math.floor(order.length / 140));
+  const colors = ['#d6eaf8', '#aed6f1', '#85c1e9', '#5dade2'];
+  const step = Math.max(1, Math.floor(order.length / 4));
+  function light(i) {
+    if (i >= order.length) { animatePath(result, 0); return; }
+    for (let k = i; k < Math.min(i + batch, order.length); k++) {
+      const sid = order[k], p = screenPos[sid];
+      if (!p) continue;
+      const c = colors[Math.min(Math.floor(k / step), colors.length - 1)];
+      svg.insertAdjacentHTML('beforeend', `<circle cx="${p.x}" cy="${p.y}" r="${r}" fill="${c}" stroke="#334155" stroke-width="1" class="visited"/>`);
+    }
+    animTimers.push(setTimeout(() => light(i + batch), 16));
+  }
+  light(0);
+}
+
+function animatePath(result, i) {
+  const old = svg.querySelectorAll('.visited'); old.forEach(n => n.remove());
+  if (i >= result.path.length - 1) { animating = false; render(); return; }
+  const a = screenPos[result.path[i]], b = screenPos[result.path[i + 1]];
+  if (a && b) {
+    const ew = edgeW();
+    svg.insertAdjacentHTML('beforeend', `<line x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}" stroke="${'#ff2d55'}" stroke-width="${ew * 1.1}" stroke-linecap="round"/>`);
+  }
+  const delay = Math.max(25, Math.min(150, 2600 / Math.max(1, result.path.length - 1)));
+  animTimers.push(setTimeout(() => animatePath(result, i + 1), delay));
+}
+
+/* =========================================================
+   搜索
+   ========================================================= */
+
+function doSearch() {
+  if (!graph) return;
+  const sName = startInput.value.trim(), eName = endInput.value.trim();
+  const sid = nameIndex[sName], eid = nameIndex[eName];
+  if (!sName || !sid) { toast('起点不存在：' + (sName || '(空)'), 'error'); return; }
+  if (!eName || !eid) { toast('终点不存在：' + (eName || '(空)'), 'error'); return; }
+  if (sid === eid) { toast('起点与终点不能相同', 'error'); return; }
+  clearAnim();
+  const t0 = performance.now();
+  const result = ALGORITHMS[algorithm].fn(graph, sid, eid);
+  result.ms = performance.now() - t0;
+  currentResult = result;
+  animating = false;
+  renderResult(result);
+  if (!result.ok) { toast(result.message, 'error'); render(); return; }
+  toast(`已规划 ${algorithm.toUpperCase()} 路径：${result.path.length} 站 · ${result.totalWeight.toFixed(2)} km`, 'ok');
+  if (animate) animateSearch(result); else render();
+}
+
+/* =========================================================
+   交互：点选 / 平移 / 缩放 / 悬停
+   ========================================================= */
+
+function stationAt(px, py) {
+  const r = stationR();
+  const thresh = Math.max(r * 1.6, 9);
+  let best = null, bestD = thresh;
+  for (const sid in screenPos) {
+    const p = screenPos[sid];
+    const d = Math.hypot(p.x - px, p.y - py);
+    if (d < bestD) { bestD = d; best = sid; }
+  }
+  return best;
+}
+
+let dragging = false, moved = false, lastX = 0, lastY = 0, startPan = { cx: 0, cy: 0 };
+
+function handleSvgClick(e) {
+  const rect = svg.getBoundingClientRect();
+  const sid = stationAt(e.clientX - rect.left, e.clientY - rect.top);
+  if (!sid) return;
+  const sname = graph.stations[sid].name;
+  if (!startInput.value.trim()) {
+    startInput.value = sname; toast('已设置起点：' + sname, 'ok');
+  } else if (!endInput.value.trim()) {
+    endInput.value = sname; toast('已设置终点：' + sname, 'ok');
+  } else {
+    startInput.value = sname; endInput.value = ''; toast('重新设置起点：' + sname, 'ok');
+  }
+  render();
+}
+
+function zoomAt(e) {
+  const rect = svg.getBoundingClientRect();
+  const px = e.clientX - rect.left, py = e.clientY - rect.top;
+  const factor = e.deltaY < 0 ? 1.15 : 1 / 1.15;
+  const newScale = Math.min(60, Math.max(0.4, view.scale * factor));
+  const { w, h } = svgSize();
+  const wx = view.cx + (px - w / 2) / view.scale;
+  const wy = view.cy + (py - h / 2) / view.scale;
+  view.cx = wx - (px - w / 2) / newScale;
+  view.cy = wy - (py - h / 2) / newScale;
+  view.scale = newScale;
+  clearAnim();
+  render();
+}
+
+function updateHover(e) {
+  const rect = svg.getBoundingClientRect();
+  const px = e.clientX - rect.left, py = e.clientY - rect.top;
+  if (px < 0 || py < 0 || px > rect.width || py > rect.height) { hideTooltip(); return; }
+  const sid = stationAt(px, py);
+  if (sid) showTooltip(e.clientX, e.clientY, sid); else hideTooltip();
+}
+
+function showTooltip(cx, cy, sid) {
+  const s = graph.stations[sid];
+  const lines = [...(graph.stationLines[sid] || [])];
+  tooltip.innerHTML = `<div class="tt-name">${escapeHtml(s.name)}</div>` +
+    (lines.length ? `<div class="tt-lines">途经：${lines.map(escapeHtml).join('、')}</div>` : '');
+  tooltip.classList.add('show');
+  const rect = tooltip.getBoundingClientRect();
+  let x = cx + 14, y = cy + 14;
+  if (x + rect.width > window.innerWidth) x = cx - rect.width - 14;
+  if (y + rect.height > window.innerHeight) y = cy - rect.height - 14;
+  tooltip.style.left = x + 'px'; tooltip.style.top = y + 'px';
+}
+
+function hideTooltip() { tooltip.classList.remove('show'); }
+
+/* =========================================================
+   轻提示 / 弹窗
+   ========================================================= */
+
+let toastTimer;
+function toast(msg, type) {
+  toastEl.textContent = msg;
+  toastEl.className = 'toast show' + (type ? ' ' + type : '');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => toastEl.classList.remove('show'), 2400);
+}
+
+function openModal(title, bodyHTML, onConfirm) {
+  document.getElementById('modal-title').textContent = title;
+  document.getElementById('modal-body').innerHTML = bodyHTML;
+  modalConfirmHandler = onConfirm;
+  document.getElementById('modal').classList.add('show');
+}
+
+function closeModal() { document.getElementById('modal').classList.remove('show'); }
+
+/* =========================================================
+   数据：加载 / 保存 / 增删
+   ========================================================= */
+
+function setGraphData(g) {
+  graph = g;
+  lineColors = g.lineColors;
+  rebuildIndex();
+  currentResult = null;
+  clearAnim();
+  startInput.value = ''; endInput.value = '';
+  const n = Object.keys(g.stations).length;
+  showNames = n <= 250;
+  document.getElementById('switch-names').checked = showNames;
+  const stats = `${n} 站 · ${countEdges(g)} 段区间 · ${Object.keys(g.lineColors).length} 条线路`;
+  document.getElementById('statusbar').innerHTML = `<span>${escapeHtml(g.name)}</span><span class="sep">·</span><span>${stats}</span>`;
+  resetResultPanel();
+}
+
+function populateDatalists() {
+  const dl = document.getElementById('station-list');
+  const names = Object.keys(nameIndex).sort((a, b) => a.localeCompare(b, 'zh'));
+  dl.innerHTML = names.map(n => `<option value="${escapeHtml(n)}"></option>`).join('');
+}
+
+function loadDataset(key) {
+  const data = DATASETS[key];
+  if (!data) return;
+  setGraphData(buildGraph(data));
+  populateDatalists();
+  fitView();
+  render();
+  toast('已加载数据集：' + data.name, 'ok');
+}
+
+function saveJSON() {
+  const data = serializeGraph(graph);
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = '地铁数据.json'; document.body.appendChild(a); a.click(); a.remove();
+  URL.revokeObjectURL(url);
+  toast('已导出 JSON 数据', 'ok');
+}
+
+function addStation() {
+  openModal('添加站点', `
+    <div class="field"><label>站名</label><input id="m-name" placeholder="例如：人民广场"></div>
+    <div class="field"><label>X 坐标（km）</label><input id="m-x" type="number" step="any" value="0"></div>
+    <div class="field"><label>Y 坐标（km，北为负）</label><input id="m-y" type="number" step="any" value="0"></div>
+  `, () => {
+    const name = document.getElementById('m-name').value.trim();
+    const x = parseFloat(document.getElementById('m-x').value || '0');
+    const y = parseFloat(document.getElementById('m-y').value || '0');
+    if (!name) { toast('请输入站名', 'error'); return false; }
+    if (nameIndex[name]) { toast('站名已存在', 'error'); return false; }
+    const id = genStationId();
+    graph.stations[id] = { id, name, x, y };
+    graph.adj[id] = [];
+    graph.stationLines[id] = new Set();
+    rebuildIndex(); populateDatalists(); render();
+    toast('已添加站点：' + name, 'ok');
+    return true;
+  });
+}
+
+function removeStation() {
+  openModal('删除站点', `
+    <div class="field"><label>选择站点</label><input id="m-name" list="station-list" placeholder="输入站名"></div>
+  `, () => {
+    const name = document.getElementById('m-name').value.trim();
+    const id = nameIndex[name];
+    if (!id) { toast('站点不存在', 'error'); return false; }
+    delete graph.stations[id];
+    delete graph.adj[id];
+    delete graph.stationLines[id];
+    for (const sid in graph.adj) graph.adj[sid] = graph.adj[sid].filter(e => e[0] !== id);
+    rebuildIndex(); populateDatalists(); render();
+    toast('已删除站点：' + name, 'ok');
+    return true;
+  });
+}
+
+function addEdge() {
+  openModal('添加区间', `
+    <div class="field"><label>起点站</label><input id="m-a" list="station-list" placeholder="输入站名"></div>
+    <div class="field"><label>终点站</label><input id="m-b" list="station-list" placeholder="输入站名"></div>
+    <div class="field"><label>距离（km）</label><input id="m-w" type="number" step="any" placeholder="留空则按坐标自动计算"></div>
+    <div class="field"><label>线路名</label><input id="m-l" placeholder="例如：新线"></div>
+  `, () => {
+    const a = nameIndex[document.getElementById('m-a').value.trim()];
+    const b = nameIndex[document.getElementById('m-b').value.trim()];
+    if (!a || !b) { toast('起终点不存在', 'error'); return false; }
+    if (a === b) { toast('不能连接同一站点', 'error'); return false; }
+    const wRaw = document.getElementById('m-w').value.trim();
+    let w = wRaw ? parseFloat(wRaw) : Math.hypot(graph.stations[a].x - graph.stations[b].x, graph.stations[a].y - graph.stations[b].y);
+    if (!isFinite(w) || w <= 0) { toast('距离无效', 'error'); return false; }
+    const line = document.getElementById('m-l').value.trim() || '区间';
+    graph.adj[a].push([b, w, line]);
+    graph.adj[b].push([a, w, line]);
+    graph.stationLines[a].add(line); graph.stationLines[b].add(line);
+    if (!(line in lineColors)) lineColors[line] = PALETTE[Object.keys(lineColors).length % PALETTE.length];
+    render();
+    toast('已添加区间', 'ok');
+    return true;
+  });
+}
+
+/* =========================================================
+   初始化
+   ========================================================= */
+
+function init() {
+  svg = document.getElementById('map');
+  mapArea = document.getElementById('map-area');
+  tooltip = document.getElementById('tooltip');
+  toastEl = document.getElementById('toast');
+  fileInput = document.getElementById('file-input');
+  startInput = document.getElementById('start-input');
+  endInput = document.getElementById('end-input');
+
+  // 算法分段选择
+  document.querySelectorAll('.segmented button').forEach(btn => {
+    btn.addEventListener('click', () => {
+      algorithm = btn.dataset.alg;
+      document.querySelectorAll('.segmented button').forEach(b => b.classList.toggle('active', b === btn));
+      document.getElementById('alg-desc').textContent = ALGORITHMS[algorithm].desc;
+    });
+  });
+
+  document.getElementById('btn-search').addEventListener('click', doSearch);
+  document.getElementById('btn-reset').addEventListener('click', () => { fitView(); render(); });
+  document.getElementById('switch-animate').addEventListener('change', e => { animate = e.target.checked; });
+  document.getElementById('switch-names').addEventListener('change', e => { showNames = e.target.checked; render(); });
+  document.getElementById('dataset-select').addEventListener('change', e => loadDataset(e.target.value));
+  document.getElementById('btn-load').addEventListener('click', () => fileInput.click());
+  document.getElementById('btn-save').addEventListener('click', saveJSON);
+  document.getElementById('btn-add-station').addEventListener('click', addStation);
+  document.getElementById('btn-remove-station').addEventListener('click', removeStation);
+  document.getElementById('btn-add-edge').addEventListener('click', addEdge);
+
+  [startInput, endInput].forEach(inp => {
+    inp.addEventListener('input', () => render());
+    inp.addEventListener('keydown', e => { if (e.key === 'Enter') doSearch(); });
+  });
+
+  // 地图交互
+  svg.addEventListener('mousedown', e => {
+    dragging = true; moved = false;
+    lastX = e.clientX; lastY = e.clientY;
+    startPan = { cx: view.cx, cy: view.cy };
+    svg.classList.add('dragging');
+  });
+  window.addEventListener('mousemove', e => {
+    if (dragging) {
+      const dx = e.clientX - lastX, dy = e.clientY - lastY;
+      if (!moved && Math.hypot(dx, dy) > 4) moved = true;
+      if (moved) {
+        view.cx = startPan.cx - dx / view.scale;
+        view.cy = startPan.cy - dy / view.scale;
+        clearAnim(); render();
+      }
+    } else {
+      updateHover(e);
+    }
+  });
+  window.addEventListener('mouseup', e => {
+    if (!dragging) return;
+    dragging = false;
+    svg.classList.remove('dragging');
+    if (!moved) handleSvgClick(e);
+  });
+  svg.addEventListener('wheel', e => { e.preventDefault(); zoomAt(e); }, { passive: false });
+
+  // 弹窗
+  document.getElementById('modal-confirm').addEventListener('click', () => {
+    const ok = modalConfirmHandler ? modalConfirmHandler() : true;
+    if (ok === false) return;
+    closeModal();
+  });
+  document.getElementById('modal-cancel').addEventListener('click', closeModal);
+  document.getElementById('modal').addEventListener('click', e => { if (e.target === document.getElementById('modal')) closeModal(); });
+
+  // 文件加载
+  fileInput.addEventListener('change', e => {
+    const f = e.target.files[0];
+    if (!f) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const text = reader.result;
+        const data = f.name.toLowerCase().endsWith('.json') ? JSON.parse(text) : parseTXT(text);
+        setGraphData(buildGraph(data));
+        populateDatalists(); fitView(); render();
+        toast('已加载文件：' + f.name, 'ok');
+      } catch (err) { toast('加载失败：' + err.message, 'error'); }
+    };
+    reader.readAsText(f);
+    e.target.value = '';
+  });
+
+  window.addEventListener('resize', () => render());
+
+  // 初始加载默认数据集
+  loadDataset('zhengzhou');
+  requestAnimationFrame(() => { fitView(); render(); });
+}
+
+if (typeof document !== 'undefined' && typeof window !== 'undefined') { init(); }
+</script>
+</body>
+</html>

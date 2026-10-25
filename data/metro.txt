@@ -1,0 +1,31 @@
+# 示例城市地铁网络数据（TXT 格式，与 metro.json 内容一致）
+# 站点行格式：station, 编号, 名称, 横坐标, 纵坐标
+# 区间行格式：edge, 起点, 终点, 距离, 线路名
+station, S01, 西苑站, 5, 20
+station, S02, 人民广场, 12, 20
+station, S03, 市中心, 20, 20
+station, S04, 科技园, 28, 20
+station, S05, 东站, 35, 20
+station, S06, 北站, 20, 5
+station, S07, 大学城, 20, 12
+station, S08, 南湖, 20, 28
+station, S09, 南站, 20, 36
+station, S10, 西北新城, 8, 8
+station, S11, 东南工业园, 33, 34
+station, S12, 机场, 38, 6
+station, S13, 火车站, 33, 28
+
+edge, S01, S02, 7.0, 1号线
+edge, S02, S03, 8.0, 1号线
+edge, S03, S04, 8.0, 1号线
+edge, S04, S05, 7.0, 1号线
+edge, S06, S07, 7.0, 2号线
+edge, S07, S03, 8.0, 2号线
+edge, S03, S08, 8.0, 2号线
+edge, S08, S09, 8.0, 2号线
+edge, S10, S02, 12.65, 3号线
+edge, S02, S08, 11.31, 3号线
+edge, S08, S11, 14.32, 3号线
+edge, S12, S04, 17.2, 4号线
+edge, S04, S13, 9.43, 4号线
+edge, S13, S09, 15.26, 4号线
